@@ -1,5 +1,5 @@
-# Publishing a GitHub release (its tag must match the version in src/Macrogotchi/manifest.json)
-# builds the plugin and uploads it to the Macro Deck Platform. The build then waits in the Creator
+# Publishing a GitHub release builds the plugin with its tag as the version (written into
+# manifest.json by the workflow) and uploads it to the Macro Deck Platform. The build then waits in the Creator
 # Portal's build library, where a release is started from it.
 #
 # The job runs in the Macro Deck workflow, not here: that is what lets the Platform tell an approved
