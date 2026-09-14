@@ -3,7 +3,7 @@
   "manifestVersion": 1,
   "id": "com.suchbyte.macrogotchi",
   "name": "Macrogotchi",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A virtual pet living on your deck.",
   "icon": "Assets/icon.svg",
   "entrypoints": {
