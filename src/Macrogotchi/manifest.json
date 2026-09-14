@@ -21,6 +21,7 @@
     "name": "Manuel Mayer"
   },
   "license": "MIT",
+  "repository": "https://github.com/manuelmayer-dev/Macrogotchi",
   "compatibility": {
     "macroDeck": ">=3.0.0"
   }
