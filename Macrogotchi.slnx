@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/solution/">
+    <File Path="AGENTS.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Macrogotchi/Macrogotchi.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Macrogotchi.Tests/Macrogotchi.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- The default-language file. Every translation is checked against it and the fallback chain ends
+       here, so it is required even for a plugin that ships one language. Add a language by adding
+       Localization/Strings.<culture>.resx beside it (Strings.de.resx, Strings.pt-BR.resx).
+       A dotted key becomes a nested class: Actions.LogMessage.Name is Strings.Actions.LogMessage.Name(). -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Widgets.Pet.Name" xml:space="preserve">
+    <value>Macrogotchi</value>
+  </data>
+  <data name="Widgets.Pet.Description" xml:space="preserve">
+    <value>Ein virtuelles Haustier auf deinem Deck. Füttere es, spiel mit ihm und halte es sauber.</value>
+  </data>
+  <data name="Actions.Open.Name" xml:space="preserve">
+    <value>Macrogotchi öffnen</value>
+  </data>
+  <data name="Actions.Open.Description" xml:space="preserve">
+    <value>Öffnet das Haustier in einem Dialog auf dem Gerät, das die Taste gedrückt hat.</value>
+  </data>
+  <data name="Actions.Open.NoClient" xml:space="preserve">
+    <value>Kein Gerät, auf dem das Haustier angezeigt werden kann.</value>
+  </data>
+  <data name="Dialog.Title" xml:space="preserve">
+    <value>Macrogotchi</value>
+  </data>
+  <data name="Controls.NewEgg" xml:space="preserve">
+    <value>Neues Ei</value>
+  </data>
+  <data name="Status.Egg" xml:space="preserve">
+    <value>Schlüpft...</value>
+  </data>
+  <data name="Status.Sleeping" xml:space="preserve">
+    <value>Schläft</value>
+  </data>
+  <data name="Status.Sick" xml:space="preserve">
+    <value>Krank</value>
+  </data>
+  <data name="Status.Hungry" xml:space="preserve">
+    <value>Hungrig</value>
+  </data>
+  <data name="Status.Tired" xml:space="preserve">
+    <value>Müde</value>
+  </data>
+  <data name="Status.Sad" xml:space="preserve">
+    <value>Traurig</value>
+  </data>
+  <data name="Status.Happy" xml:space="preserve">
+    <value>Glücklich</value>
+  </data>
+  <data name="Status.Dead" xml:space="preserve">
+    <value>Ruhe in Frieden</value>
+  </data>
+  <data name="Config.Name.Label" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Config.Name.Placeholder" xml:space="preserve">
+    <value>Gib deinem Haustier einen Namen</value>
+  </data>
+</root>
