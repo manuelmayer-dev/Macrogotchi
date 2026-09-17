@@ -18,7 +18,6 @@ jobs:
       contents: read
       id-token: write
     with:
-      package-id: com.suchbyte.macrogotchi
       version: ${{ github.event.release.tag_name }}
       source: src/Macrogotchi
       # Pinned: `--prerelease` would pick 3.0.0-preview.10, which sorts above the newer betas.
