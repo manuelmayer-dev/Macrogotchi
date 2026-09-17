@@ -81,11 +81,23 @@ public sealed class PluginIntegration : IPluginIntegration, IWidgetTypeProvider,
 	private UiViewSession Session(UiSurface surface, bool sample, string? name)
 	{
 		var padding = PaddingFor(surface);
-		var root = sample
-			? PetView.Build(new UiState<PetState>(PetState.Sample), null, padding, name)
-			: PetView.Build(_game.State, _game, padding, name);
 
-		return new UiViewSession(new UiView(surface, root));
+		if (sample)
+		{
+			return new UiViewSession(new UiView(surface, PetView.Build(new UiState<PetState>(PetState.Sample), null, padding, name)));
+		}
+
+		var watch = _game.Watch();
+
+		try
+		{
+			return new UiViewSession(new UiView(surface, PetView.Build(watch.State, _game, padding, name)), watch);
+		}
+		catch
+		{
+			watch.Dispose();
+			throw;
+		}
 	}
 
 	private static UiViewSession ConfigSession(UiSurface surface)

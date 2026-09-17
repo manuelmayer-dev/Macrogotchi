@@ -1,6 +1,5 @@
 using System.Text.Json;
 using MacroDeck.Plugin.Hosting;
-using MacroDeck.Ui.Runtime;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -8,10 +7,16 @@ using Serilog;
 namespace Macrogotchi;
 
 /// <summary>
-/// The one pet this plugin keeps: its reactive state, the clock that ages it, and the file it survives
-/// restarts in. Every widget and dialog session reads the same <see cref="State" />, so a press on one deck
-/// repaints every other one.
+/// The one pet this plugin keeps: its current snapshot, the clock that ages it, and the file it survives
+/// restarts in. Every widget and dialog session renders its own <see cref="Watch" /> of that snapshot, so a
+/// press on one deck repaints every other one.
 /// </summary>
+/// <remarks>
+/// Views never read a state owned by the game. A <see cref="UiState{T}" /> keeps every view that ever read it
+/// alive and flushes a patch into each one on every write, with no way to detach - so a shared state would pin
+/// every closed session and grow its undrained patch queue every frame. A watch is owned by one session and
+/// unhooked when that session closes, which lets the view go with it.
+/// </remarks>
 public sealed class PetGame : BackgroundService
 {
 	private static readonly TimeSpan _frameInterval = TimeSpan.FromSeconds(2);
@@ -22,6 +27,7 @@ public sealed class PetGame : BackgroundService
 	private readonly string? _file;
 	private readonly TimeProvider _time;
 	private readonly ILogger _logger;
+	private PetState _current;
 	private bool _dirty;
 
 	public PetGame(IOptions<PluginHostOptions> options, ILogger logger)
@@ -37,10 +43,29 @@ public sealed class PetGame : BackgroundService
 		_file = dataDirectory is null ? null : Path.Combine(dataDirectory, "pet.json");
 		_time = time;
 		_logger = logger.ForContext<PetGame>();
-		State = new UiState<PetState>(Load());
+		_current = Load();
 	}
 
-	public UiState<PetState> State { get; }
+	/// <summary>Raised after <see cref="Current" /> changed, outside the game's lock.</summary>
+	internal event Action? Changed;
+
+	/// <summary>The latest snapshot of the pet.</summary>
+	public PetState Current
+	{
+		get
+		{
+			lock (_gate)
+			{
+				return _current;
+			}
+		}
+	}
+
+	/// <summary>
+	/// A reactive copy of the pet for one session to render. Dispose it when the session closes, or the game
+	/// keeps it - and the view reading it - alive for as long as the plugin runs.
+	/// </summary>
+	public PetWatch Watch() => new(this);
 
 	public void Feed() => Apply(pet => pet.Feed());
 
@@ -74,28 +99,34 @@ public sealed class PetGame : BackgroundService
 			}
 			else
 			{
-				State.Set(State.Peek().NextFrame());
+				Advance(pet => pet.NextFrame(), persist: false);
 			}
 
 			Save();
 		}
 	}
 
-	private void Apply(Func<PetState, PetState> rule)
+	private void Apply(Func<PetState, PetState> rule) => Advance(rule, persist: true);
+
+	private void Advance(Func<PetState, PetState> rule, bool persist)
 	{
 		lock (_gate)
 		{
-			var current = State.Peek();
-			var next = rule(current);
+			var next = rule(_current);
 
-			if (ReferenceEquals(current, next))
+			if (ReferenceEquals(_current, next))
 			{
 				return;
 			}
 
-			State.Set(next with { UpdatedAt = _time.GetUtcNow() });
-			_dirty = true;
+			_current = persist ? next with { UpdatedAt = _time.GetUtcNow() } : next;
+			_dirty |= persist;
 		}
+
+		// Raised outside the gate: a watch writes its view's state, which takes that view's lock, and a press
+		// arrives holding the same lock before it reaches the gate. Each watch reads Current rather than a
+		// passed value, so two writers notifying out of order still leave every watch on the latest snapshot.
+		Changed?.Invoke();
 	}
 
 	private PetState Load()
@@ -138,7 +169,7 @@ public sealed class PetGame : BackgroundService
 			}
 
 			_dirty = false;
-			pet = State.Peek();
+			pet = _current;
 		}
 
 		try
