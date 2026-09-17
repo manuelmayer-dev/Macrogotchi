@@ -11,7 +11,8 @@
         "-r",
         "win-x64",
         "--self-contained",
-        "true",
+        "false",
+        "-p:UseAppHost=false",
         "-o",
         "bin/publish/win-x64"
       ],
@@ -27,7 +28,8 @@
         "-r",
         "osx-arm64",
         "--self-contained",
-        "true",
+        "false",
+        "-p:UseAppHost=false",
         "-o",
         "bin/publish/osx-arm64"
       ],
@@ -43,7 +45,8 @@
         "-r",
         "linux-x64",
         "--self-contained",
-        "true",
+        "false",
+        "-p:UseAppHost=false",
         "-o",
         "bin/publish/linux-x64"
       ],
