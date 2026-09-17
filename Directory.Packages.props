@@ -6,7 +6,7 @@
         <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
         <!-- One knob for every Macro Deck package, pinned to the SDK the running host ships. Override with
              `dotnet build -p:MacroDeckSdkVersion=<version>`. -->
-        <MacroDeckSdkVersion Condition="'$(MacroDeckSdkVersion)' == ''">3.0.0-beta.5</MacroDeckSdkVersion>
+        <MacroDeckSdkVersion Condition="'$(MacroDeckSdkVersion)' == ''">3.0.0-beta.7</MacroDeckSdkVersion>
     </PropertyGroup>
 
     <ItemGroup>

@@ -34,6 +34,6 @@ jobs:
       - name: Build with the plugin CLI
         continue-on-error: true
         run: |
-          dotnet tool install --global MacroDeck.Plugin.Cli --version 3.0.0-beta.5
+          dotnet tool install --global MacroDeck.Plugin.Cli --version 3.0.0-beta.7
           macrodeck-plugin build --source src/Macrogotchi --output "${RUNNER_TEMP}/artifacts"
           ls -la "${RUNNER_TEMP}/artifacts"

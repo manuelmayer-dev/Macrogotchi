@@ -22,5 +22,5 @@ jobs:
       version: ${{ github.event.release.tag_name }}
       source: src/Macrogotchi
       # Pinned: `--prerelease` would pick 3.0.0-preview.10, which sorts above the newer betas.
-      cli-version: 3.0.0-beta.5
+      cli-version: 3.0.0-beta.7
       changelog: ${{ github.event.release.body }}
