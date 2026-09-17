@@ -33,15 +33,23 @@ public sealed class PetStateTests
 		var pet = Hatched() with { Fullness = 40 };
 
 		pet = pet.Feed();
-		Assert.That(pet.Fullness, Is.EqualTo(70));
+		Assert.That(pet.Fullness, Is.EqualTo(65));
 
-		for (var i = 0; i < 3; i++)
-		{
-			pet = pet.Tick();
-		}
+		pet = TickTimes(pet, 19);
+		Assert.That(pet.Poop, Is.Zero);
 
+		pet = pet.Tick();
 		Assert.That(pet.Poop, Is.EqualTo(1));
 		Assert.That(pet.Clean().Poop, Is.Zero);
+	}
+
+	[Test]
+	public void An_ignored_pet_survives_a_working_day()
+	{
+		var pet = TickTimes(Hatched(), 8 * 60);
+
+		Assert.That(pet.IsAlive, Is.True);
+		Assert.That(pet.Fullness, Is.LessThan(PetState.Max));
 	}
 
 	[Test]
@@ -49,11 +57,7 @@ public sealed class PetStateTests
 	{
 		var pet = Hatched() with { Fullness = 0 };
 
-		for (var i = 0; i < 6; i++)
-		{
-			pet = pet.Tick();
-		}
-
+		pet = TickTimes(pet, 60);
 		Assert.That(pet.IsSick, Is.True);
 		Assert.That(pet.Heal().IsSick, Is.False);
 
@@ -67,17 +71,54 @@ public sealed class PetStateTests
 	}
 
 	[Test]
+	public void A_dead_pet_leaves_no_mess_behind()
+	{
+		var pet = Hatched() with { Fullness = 0, Health = 1, IsSick = true, Poop = 3, Digesting = 2 };
+
+		pet = TickTimes(pet, 3);
+
+		Assert.That(pet.IsAlive, Is.False);
+		Assert.That(pet.Poop, Is.Zero);
+		Assert.That(pet.Digesting, Is.Zero);
+		Assert.That(pet.IsSick, Is.False);
+	}
+
+	[Test]
+	public void Time_the_plugin_was_not_running_never_kills_the_pet()
+	{
+		var pet = Hatched() with { Fullness = 5, Health = 1, IsSick = true };
+
+		for (var i = 0; i < 12 * 60; i++)
+		{
+			pet = pet.Rest();
+		}
+
+		Assert.That(pet.IsAlive, Is.True);
+		Assert.That(pet.Health, Is.EqualTo(1));
+	}
+
+	[Test]
 	public void Sleeping_restores_energy_and_wakes_the_pet_when_full()
 	{
-		var pet = Hatched() with { Energy = 96 };
+		var pet = Hatched() with { Energy = 98 };
 
 		pet = pet.ToggleSleep();
 		Assert.That(pet.Play(), Is.SameAs(pet));
 
-		pet = pet.Tick();
+		pet = TickTimes(pet, 2);
 
 		Assert.That(pet.Energy, Is.EqualTo(PetState.Max));
 		Assert.That(pet.IsAsleep, Is.False);
+	}
+
+	private static PetState TickTimes(PetState pet, int ticks)
+	{
+		for (var i = 0; i < ticks; i++)
+		{
+			pet = pet.Tick();
+		}
+
+		return pet;
 	}
 
 	private static PetState Hatched() => PetState.NewEgg(DateTimeOffset.UnixEpoch) with { AgeTicks = PetState.HatchTicks };
@@ -93,12 +134,12 @@ public sealed class PetViewTests
 		using var watch = game.Watch();
 		var host = UiTestHost.Render(PetView.Build(watch.State, game, 0.05));
 
-		var before = host.ById("pet.bars.food.foodBar").Number("end") ?? 0;
+		var before = host.ById("pet.statsFade.bars.food.foodBar").Number("end") ?? 0;
 		host.ById("pet.controls.feed").Raise("press");
 		await host.SettleAsync();
 
-		Assert.That(host.ById("pet.bars.food.foodBar").Number("end"), Is.GreaterThan(before));
-		Assert.That(game.Current.Fullness, Is.EqualTo(70));
+		Assert.That(host.ById("pet.statsFade.bars.food.foodBar").Number("end"), Is.GreaterThan(before));
+		Assert.That(game.Current.Fullness, Is.EqualTo(65));
 	}
 
 	[Test]
@@ -107,15 +148,15 @@ public sealed class PetViewTests
 		var game = GameWith(PetState.Sample with { Fullness = 40 });
 		var watch = game.Watch();
 		var host = UiTestHost.Render(PetView.Build(watch.State, game, 0.05));
-		var before = host.ById("pet.bars.food.foodBar").Number("end");
+		var before = host.ById("pet.statsFade.bars.food.foodBar").Number("end");
 
 		watch.Dispose();
 		game.Feed();
 		await host.SettleAsync();
 
-		Assert.That(game.Current.Fullness, Is.EqualTo(70));
+		Assert.That(game.Current.Fullness, Is.EqualTo(65));
 		Assert.That(watch.State.Peek().Fullness, Is.EqualTo(40));
-		Assert.That(host.ById("pet.bars.food.foodBar").Number("end"), Is.EqualTo(before));
+		Assert.That(host.ById("pet.statsFade.bars.food.foodBar").Number("end"), Is.EqualTo(before));
 	}
 
 	[Test]
@@ -127,8 +168,8 @@ public sealed class PetViewTests
 
 		game.Feed();
 
-		Assert.That(first.State.Peek().Fullness, Is.EqualTo(70));
-		Assert.That(second.State.Peek().Fullness, Is.EqualTo(70));
+		Assert.That(first.State.Peek().Fullness, Is.EqualTo(65));
+		Assert.That(second.State.Peek().Fullness, Is.EqualTo(65));
 	}
 
 	[Test]
@@ -137,7 +178,8 @@ public sealed class PetViewTests
 		var host = UiTestHost.Render(PetView.Build(new UiState<PetState>(PetState.Sample), null, 0.05));
 
 		Assert.That(host.ById("pet.controls.feed").HasProperty("events"), Is.False);
-		Assert.That(host.ById("pet.petArea.spriteRow.sprite.row4.px4_4").Text("background"), Is.Not.Null);
+		Assert.That(host.ById($"pet.petArea.sprite.spriteLayers.layer{PetSprites.Palette.Count - 1}").Text("path"), Is.Not.Null);
+		Assert.That(host.ById("pet.statsFade.bars.food.foodIcon.foodIconShape").Text("path"), Is.EqualTo(PetIcons.Food));
 	}
 
 	private static PetGame GameWith(PetState pet)

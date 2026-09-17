@@ -21,7 +21,7 @@ public sealed class PetGame : BackgroundService
 {
 	private static readonly TimeSpan _frameInterval = TimeSpan.FromSeconds(2);
 	private static readonly TimeSpan _tickInterval = TimeSpan.FromMinutes(1);
-	private const int _maxCatchUpTicks = 24 * 60;
+	private const int _maxCatchUpTicks = 12 * 60;
 
 	private readonly Lock _gate = new();
 	private readonly string? _file;
@@ -145,7 +145,7 @@ public sealed class PetGame : BackgroundService
 
 			for (var i = 0; i < missed; i++)
 			{
-				pet = pet.Tick();
+				pet = pet.Rest();
 			}
 
 			return pet with { UpdatedAt = now };
