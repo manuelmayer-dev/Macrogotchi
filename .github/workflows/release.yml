@@ -1,9 +1,15 @@
 # Publishing a GitHub release builds the plugin with its tag as the version (written into
-# manifest.json by the workflow) and uploads it to the Macro Deck Platform. The build then waits in the Creator
-# Portal's build library, where a release is started from it.
+# manifest.json by the workflow), runs the tests in Macrogotchi.slnx, runs the plugin's conformance
+# suite on a disposable stub host and uploads the build to the Macro Deck Platform. The build then
+# waits in the Creator Portal's build library, where a release is started from it.
 #
-# The job runs in the Macro Deck workflow, not here: that is what lets the Platform tell an approved
-# build apart from any other workflow.
+# The jobs run in the Macro Deck workflow, not here: that is what lets the Platform tell an approved
+# build apart from any other workflow. Only its upload job can request the OIDC token, so neither the
+# build nor the tests nor the plugin itself ever run where the upload credential is available.
+#
+# Pointed at the workflow's branch until it is tagged: a build from there runs every step, but the
+# Platform refuses its upload, since it only accepts the workflow at a v* tag. Point it back at the
+# tag before the next real release.
 
 name: Release
 
@@ -13,7 +19,7 @@ on:
 
 jobs:
   publish:
-    uses: Macro-Deck-App/GitHub-Actions/.github/workflows/publish-plugin.yml@v1
+    uses: Macro-Deck-App/GitHub-Actions/.github/workflows/publish-plugin.yml@feature/split-publish-jobs-and-stub-host
     permissions:
       contents: read
       id-token: write
