@@ -6,10 +6,6 @@
 # The jobs run in the Macro Deck workflow, not here: that is what lets the Platform tell an approved
 # build apart from any other workflow. Only its upload job can request the OIDC token, so neither the
 # build nor the tests nor the plugin itself ever run where the upload credential is available.
-#
-# Pointed at the workflow's branch until it is tagged: a build from there runs every step, but the
-# Platform refuses its upload, since it only accepts the workflow at a v* tag. Point it back at the
-# tag before the next real release.
 
 name: Release
 
@@ -19,7 +15,7 @@ on:
 
 jobs:
   publish:
-    uses: Macro-Deck-App/GitHub-Actions/.github/workflows/publish-plugin.yml@feature/split-publish-jobs-and-stub-host
+    uses: Macro-Deck-App/GitHub-Actions/.github/workflows/publish-plugin.yml@v1
     permissions:
       contents: read
       id-token: write
