@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MacroDeck.Plugin.Testing;
 using MacroDeck.Ui.Runtime;
 using MacroDeck.Ui.Testing;
@@ -88,16 +89,46 @@ public sealed class PetViewTests
 	[Test]
 	public async Task Pressing_feed_updates_the_food_bar()
 	{
-		var game = new PetGame(dataDirectory: null, TimeProvider.System, Log.Logger);
-		game.State.Set(PetState.Sample with { Fullness = 40 });
-		var host = UiTestHost.Render(PetView.Build(game.State, game, 0.05));
+		var game = GameWith(PetState.Sample with { Fullness = 40 });
+		using var watch = game.Watch();
+		var host = UiTestHost.Render(PetView.Build(watch.State, game, 0.05));
 
 		var before = host.ById("pet.bars.food.foodBar").Number("end") ?? 0;
 		host.ById("pet.controls.feed").Raise("press");
 		await host.SettleAsync();
 
 		Assert.That(host.ById("pet.bars.food.foodBar").Number("end"), Is.GreaterThan(before));
-		Assert.That(game.State.Peek().Fullness, Is.EqualTo(70));
+		Assert.That(game.Current.Fullness, Is.EqualTo(70));
+	}
+
+	[Test]
+	public async Task A_closed_session_no_longer_follows_the_pet()
+	{
+		var game = GameWith(PetState.Sample with { Fullness = 40 });
+		var watch = game.Watch();
+		var host = UiTestHost.Render(PetView.Build(watch.State, game, 0.05));
+		var before = host.ById("pet.bars.food.foodBar").Number("end");
+
+		watch.Dispose();
+		game.Feed();
+		await host.SettleAsync();
+
+		Assert.That(game.Current.Fullness, Is.EqualTo(70));
+		Assert.That(watch.State.Peek().Fullness, Is.EqualTo(40));
+		Assert.That(host.ById("pet.bars.food.foodBar").Number("end"), Is.EqualTo(before));
+	}
+
+	[Test]
+	public void Every_open_watch_follows_the_pet()
+	{
+		var game = GameWith(PetState.Sample with { Fullness = 40 });
+		using var first = game.Watch();
+		using var second = game.Watch();
+
+		game.Feed();
+
+		Assert.That(first.State.Peek().Fullness, Is.EqualTo(70));
+		Assert.That(second.State.Peek().Fullness, Is.EqualTo(70));
 	}
 
 	[Test]
@@ -107,6 +138,16 @@ public sealed class PetViewTests
 
 		Assert.That(host.ById("pet.controls.feed").HasProperty("events"), Is.False);
 		Assert.That(host.ById("pet.petArea.spriteRow.sprite.row4.px4_4").Text("background"), Is.Not.Null);
+	}
+
+	private static PetGame GameWith(PetState pet)
+	{
+		var directory = Directory.CreateTempSubdirectory("macrogotchi-tests-").FullName;
+		File.WriteAllText(
+			Path.Combine(directory, "pet.json"),
+			JsonSerializer.Serialize(pet with { UpdatedAt = DateTimeOffset.UtcNow }));
+
+		return new PetGame(directory, TimeProvider.System, Log.Logger);
 	}
 }
 
