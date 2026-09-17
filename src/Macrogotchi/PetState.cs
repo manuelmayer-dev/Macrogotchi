@@ -28,6 +28,7 @@ public enum PetMood
 public sealed record PetState
 {
 	public const int HatchTicks = 2;
+	private const int _digestTicks = 20;
 	public const int Max = 100;
 
 	public int AgeTicks { get; init; }
@@ -95,47 +96,103 @@ public sealed record PetState
 		Energy = 70,
 	};
 
-	public PetState Tick()
+	/// <summary>One minute of the pet's life while the plugin runs.</summary>
+	public PetState Tick() => Advance(offline: false);
+
+	/// <summary>
+	/// One minute that passed while the plugin was not running - overnight, say. The pet is treated as
+	/// resting: it still ages, gets hungry slowly and digests, but it neither falls ill nor loses health, so
+	/// switching the computer off is never what kills it.
+	/// </summary>
+	public PetState Rest() => Advance(offline: true);
+
+	public PetState Feed() => !CanBeHandled || IsAsleep || Fullness >= Max
+		? this
+		: this with { Fullness = Clamp(Fullness + 25), Digesting = Math.Min(Digesting + 1, 3) };
+
+	public PetState Snack() => !CanBeHandled || IsAsleep
+		? this
+		: this with
+		{
+			Fullness = Clamp(Fullness + 8),
+			Happiness = Clamp(Happiness + 15),
+			Health = Clamp(Health - (Fullness >= Max ? 5 : 0)),
+		};
+
+	public PetState Play() => !CanBeHandled || IsAsleep || Energy < 10
+		? this
+		: this with { Happiness = Clamp(Happiness + 15), Energy = Clamp(Energy - 8), Fullness = Clamp(Fullness - 2) };
+
+	public PetState Clean() => !CanBeHandled || Poop == 0 ? this : this with { Poop = 0 };
+
+	public PetState Heal() => !CanBeHandled || !IsSick
+		? this
+		: this with { IsSick = false, Health = Clamp(Health + 25), StarvingTicks = 0 };
+
+	public PetState ToggleSleep() => !CanBeHandled ? this : this with { IsAsleep = !IsAsleep };
+
+	public PetState NextFrame() => this with { Frame = Frame ^ 1 };
+
+	// Rates are "one point every N minutes", keyed off the pet's age so no fractional state is stored.
+	// Left completely alone, a well-fed pet goes hungry after about seven hours, falls ill an hour later
+	// and dies roughly two hours after that - a working day, not a coffee break.
+	private PetState Advance(bool offline)
 	{
 		if (!IsAlive)
 		{
 			return this;
 		}
 
-		var next = this with { AgeTicks = AgeTicks + 1 };
+		var age = AgeTicks + 1;
+		var next = this with { AgeTicks = age };
 
 		if (next.IsEgg)
 		{
 			return next;
 		}
 
+		var resting = offline || IsAsleep;
+
 		next = next with
 		{
-			Fullness = Clamp(Fullness - (IsAsleep ? 1 : 2)),
-			Happiness = Clamp(Happiness - (IsAsleep ? 0 : Poop > 0 ? 2 : 1)),
-			Energy = Clamp(Energy + (IsAsleep ? 5 : -1)),
+			Fullness = Clamp(Fullness - Every(age, resting ? 10 : 4)),
+			Happiness = Clamp(Happiness - (resting ? 0 : Every(age, Poop > 0 ? 3 : 6))),
+			Energy = Clamp(Energy + (IsAsleep || offline ? 1 : -Every(age, 6))),
 		};
 
 		if (Digesting > 0)
 		{
-			next = next.DigestTicks + 1 >= 3
+			next = next.DigestTicks + 1 >= _digestTicks
 				? next with { Poop = Math.Min(Poop + 1, 3), Digesting = Digesting - 1, DigestTicks = 0 }
 				: next with { DigestTicks = DigestTicks + 1 };
 		}
 
 		next = next with { StarvingTicks = next.Fullness == 0 ? StarvingTicks + 1 : 0 };
 
-		if (!next.IsSick && (next.Poop >= 2 || next.StarvingTicks >= 5))
+		if (offline)
+		{
+			return next;
+		}
+
+		if (!next.IsSick && (next.Poop >= 3 || next.StarvingTicks >= 60))
 		{
 			next = next with { IsSick = true };
 		}
 
-		var healthDelta = next.IsSick ? -4 : next.Fullness == 0 ? -2 : next.Happiness == 0 ? -1 : 2;
+		var healthDelta =
+			-Every(age, 3) * ((next.IsSick ? 1 : 0) + (next.Fullness == 0 ? 1 : 0)) -
+			(next.Happiness == 0 ? Every(age, 6) : 0);
+
+		if (healthDelta == 0 && !next.IsSick && next.Fullness > 0)
+		{
+			healthDelta = Every(age, 2);
+		}
+
 		next = next with { Health = Clamp(Health + healthDelta) };
 
 		if (next.Health == 0)
 		{
-			return next with { IsAlive = false, IsAsleep = false };
+			return Died(next);
 		}
 
 		if (next.IsAsleep && next.Energy >= Max)
@@ -151,32 +208,18 @@ public sealed record PetState
 		return next;
 	}
 
-	public PetState Feed() => !CanBeHandled || IsAsleep || Fullness >= Max
-		? this
-		: this with { Fullness = Clamp(Fullness + 30), Digesting = Digesting + 1 };
+	// A grave has nothing left to digest or clean up.
+	private static PetState Died(PetState pet) => pet with
+	{
+		IsAlive = false,
+		IsAsleep = false,
+		IsSick = false,
+		Poop = 0,
+		Digesting = 0,
+		DigestTicks = 0,
+	};
 
-	public PetState Snack() => !CanBeHandled || IsAsleep
-		? this
-		: this with
-		{
-			Fullness = Clamp(Fullness + 10),
-			Happiness = Clamp(Happiness + 15),
-			Health = Clamp(Health - (Fullness >= Max ? 5 : 0)),
-		};
-
-	public PetState Play() => !CanBeHandled || IsAsleep || Energy < 10
-		? this
-		: this with { Happiness = Clamp(Happiness + 20), Energy = Clamp(Energy - 10) };
-
-	public PetState Clean() => !CanBeHandled ? this : this with { Poop = 0 };
-
-	public PetState Heal() => !CanBeHandled || !IsSick
-		? this
-		: this with { IsSick = false, Health = Clamp(Health + 20), StarvingTicks = 0 };
-
-	public PetState ToggleSleep() => !CanBeHandled ? this : this with { IsAsleep = !IsAsleep };
-
-	public PetState NextFrame() => this with { Frame = Frame ^ 1 };
+	private static int Every(int age, int minutes) => age % minutes == 0 ? 1 : 0;
 
 	private static int Clamp(int value) => Math.Clamp(value, 0, Max);
 }
